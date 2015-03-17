@@ -5,6 +5,8 @@ all: ../tutorial.pdf
 
 tutorial.pdf: tutorial.tex
 	pdflatex $<
+	pdflatex $<
+	pdflatex $<
 
 clean:
-	rm -f *.aux *.log *.out *.pdf
+	rm -f *.blg *.bbl *.aux *.log *.out *.pdf
