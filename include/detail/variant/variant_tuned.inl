@@ -74,6 +74,10 @@ struct code_variant<Policy, T, D, RUN_TUNED> {
     m_default_variant = variant;
   }
 
+  void add_input_feature(if_type *feature) {
+    m_input_features.push_back(feature);
+  }
+
   void add_constraint(cv_type *variant, constraint_type *constraint) {
     constraint_wrapper::add(variant, constraint, m_constraints);
   }
