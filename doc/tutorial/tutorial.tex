@@ -1,6 +1,5 @@
 \title {Nitro Autotuning System Tutorial}
 \author{
-  Saurav Muralidharan \\
   School of Computing, University of Utah
 }
 \date{\today}
@@ -13,25 +12,31 @@
 \maketitle
 
 \section{Introduction}
-Nitro is an automatic performance tuning system for C/C++ applications.
+Nitro is an automatic performance tuning system for GPU applications.
 It dynamically selects the optimal algorithmic variant to execute based
-on characteristics of the underlying architecture, input data set, current system load etc.
+on characteristics of the underlying architecture and input data set.  
 
-This article provides a brief tutorial on how to use the Nitro system to
-achieve optimal performance in an existing C/C++ application.
-
-\section{Installation and Setup}
-Nitro can be obtained from GitHub \url{http://github.com/54ur4v/nitro}. Before
-using it, however, the following software packages must be present:
+\section{Installation}
+Nitro can be obtained from GitHub: \url{http://github.com/nitro-tuner/nitro}.
+Before trying to install Nitro, however, make sure the following software packages are installed:
 
 \begin{itemize}
-  \item \textsl{Intel TBB} - For Parallel/Asynchronous Feature Evaluation
-  \item \textsl{libSVM} - Support Vector Machine Classification Library used by Nitro
+  \item NVIDIA CUDA 6.5 or above
+  \item Python 2.7 or above
+  \item LibSVM library: \url{http://www.csie.ntu.edu.tw/~cjlin/libsvm/}
+  \item CUSP library (for the SpMV example): \url{https://github.com/cusplibrary/cusplibrary}
 \end{itemize}
 
-Nitro's C++ component is header-only and thus requires no installation per se. Just
-make sure \texttt{NITRO\_ROOT/include} is in the include path when the 
-target application is compiled.
+The following system paths must be set. Here, \texttt{\$NITRO\_ROOT} refers
+to the directory where Nitro is installed:
+
+\begin{itemize}
+  \item Add \texttt{\$NITRO\_ROOT/src} to \texttt{\$PYTHONPATH}
+  \item Set \texttt{\$LIBSVM\_PATH} to directory where libSVM is installed~\footnote{Make sure you do a \texttt{make} and \texttt{make lib} in this directory}
+  \item Add the libSVM installation directory to \texttt{\$PATH} and \texttt{\$LD\_LIBRARY\_PATH}
+  \item Set \texttt{\$CUSP\_PATH} to directory where CUSP library is installed
+  \item Set \texttt{\$SHADER\_MODEL} to the SM architecture of the GPU you have (eg.: 20 for Fermi-class GPUs)
+\end{itemize}
 
 \section{General System Architecture}
 Nitro consists of two parts:
@@ -48,7 +53,7 @@ Nitro's Python interface, and (3) specifying training data and (optionally)
 testing data.
 
 The Python interface allows users to customize various aspects of the tuning
-process such as enabling/disabling parallel feature evaluation, toggling
+process such as toggling
 constraints, specifying which classifier to use, classifier properties etc.
 
 \subsection{Tuning Process}
@@ -57,21 +62,22 @@ set of features associated with each, Nitro selects the optimal (w.r.t some
 metric such as performance) variant for the given input and architecture. To accomplish
 this, Nitro builds a \textsl{classification model} from user-provided \textsl{training data}.
 This classification model is then used to predict the code variant to execute.
-
-Each feature describes a characteristic of the execution environment, such as input
-data set, underlying architecture, or current system load.
+Each feature is a user-defined function that describes a characteristic of the input. For example,
+the number of rows in the input matrix for the SpMV sample.
 
 \section{Tuning Applications Using Nitro}
 
-Let's try and tune a simple application using Nitro. We'll be using the
-example application in \texttt{NITRO\_ROOT/examples/simple\_test}.
+A Sparse-Matrix Vector Multiplication (SpMV) example application is included with this
+release to demonstrate how applications can be tuned using Nitro. It can be found
+at \texttt{\$NITRO\_ROOT/examples/spmv}. The following sub-sections
+walk through the process of integrating Nitro into the C++ part of the application and then
+customizing the tuning process using the Python-based tuning interface.
 
 \subsection{Setting up the Context}
 Before specifying variants and features in the target C++ application,
 an object of type \texttt{nitro::context} must first be created. This object
 sets up initial state and manages the coordination among the various
 code variants executing within the application.
-
 
 \subsection{Specifying Variants}
 
@@ -112,18 +118,18 @@ Note that the string specified as the second argument to the constructor
 must exactly match the name of the variant specified in the \texttt{tune.py} script.
 
 \subsubsection{Defining Code Variants}
-A code variant in Nitro can take any types of arguments but must return a real (double)
-value representing the performance of the variant on the given input. There are two
+A code variant in Nitro can take any types of arguments but must return a string
+representing the performance of the variant on the given input. There are two
 ways in which a variant can be defined:
 
 \begin{itemize}
-\item \textbf{Create a Functor}: The functor must derive from \texttt{nitro::variant\_type<T1, T2, ...>}
+\item \textbf{Create a Functor}: The functor must derive from \texttt{nitro::variant\-\_type<T1, T2, ...>}
 where each $T_i$ is an argument type of the variant. Further, it must override the function call
 operator taking the correct argument types and returning a double. In our running example, this would
 be \texttt{double operator()(float*, float*) \{ ... \}}.
 
 \item \textbf{Wrap Function Pointer}: In case the variant is defined as a function that
-accepts the relevant argument types and returns a double, then Nitro provides a function pointer wrapper
+accepts the relevant argument types and returns a string, then Nitro provides a function pointer wrapper
 class \texttt{wrap\_variant} that can create the correct functor type. For our example, this would
 be (assuming \texttt{variant1} is one of the variants defined as a function):
 \texttt{nitro::wrap\_variant<float*, float*> \_variant1(variant1);}.
@@ -140,15 +146,10 @@ Execution of the variant is accomplished by simply calling the \texttt{code\_var
 function call operator with the required input arguments. Depending on the tuning context, Nitro
 automatically selects the correct internal variant to execute.
 
-\subsection{Specifying Features}
-
-Features are characteristics of the execution context of the application. This includes
-features of the input data set, underlying architecture, current system load etc.
-
 \subsubsection{Specifying Input Features}
 Input features can be specified in a way similar to variants: using either a functor, or
 using the \texttt{wrap\_feature} metafunction. They take in the exact same input as the
-variant will, and must return a real value (double) representing the value of the calculated
+variant will, and must return a string representing the value of the calculated
 feature for that input data. Here's an example:
 
 \begin{verbatim}
@@ -162,14 +163,36 @@ wrap_feature<float*, float*> _feature1(feature1);
 test_variant.add_input_feature(&_feature1);
 \end{verbatim}
 
-\subsubsection{Specifying Architectural Features}
-Since architectural features are assumed to be constant during run-time,
-they can be calculated once and added to the feature set of the variant
-using the \texttt{add\_arch\_feature} function.
+\subsubsection{Specifying Constraints}
+
+For certain inputs, it's possible that a variant produces wrong results, or takes
+unacceptably long to execute. To handle such cases, Nitro supports the specification
+of \emph{constraint functions}.
+Constraint functions can be added to code variants using the
+\texttt{add\_constraint} function which accepts a constraint function and the specific variant for which it is valid.
+Constraints are automatically evaluated by Nitro and force the computation to revert to
+the default variant if a constraint fails in the deployed executable.
+In the SpMV example, the \texttt{dia\_cutoff} constraint ensures that
+the DIA variant doesn't execute if the constraint evaluates to \texttt{false}.
 
 \subsection{Customizing the Autotuner}
-\subsection{Providing Training and Test Data}
+\label{sec:tunepy}
+
+Tuning parameters may be specified using Nitro's Python interface. This includes
+specifying training inputs, customizing the machine learning algorithm, etc.
+For SpMV, the configuration file is \texttt{tune.py}. The final call to
+the \texttt{tune()} function begins the autotuning process.
+
 \subsection{Running the Autotuner}
+
+Running the tuning script using \texttt{python tune.py} invokes the autotuner. Training data is automatically
+collected, and variant selection models are placed in the \texttt{models/} folder.
+
 \subsection{Using the Tuned Application}
+
+Once the tuning process is complete, an adaptive executable named \texttt{spmv\_tuned} is generated, which
+automatically queries the constructed model in the \texttt{models/} folder at run-time and selects
+the appropriate variant to execute.
+
 
 \end{document}
