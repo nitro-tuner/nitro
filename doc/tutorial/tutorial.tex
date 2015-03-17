@@ -24,7 +24,7 @@ Before trying to install Nitro, however, make sure the following software packag
   \item NVIDIA CUDA 6.5 or above
   \item Python 2.7 or above
   \item LibSVM 3.12 or above: \url{http://www.csie.ntu.edu.tw/~cjlin/libsvm/}
-  \item CUSP library (for the SpMV example): \url{https://github.com/cusplibrary/cusplibrary}
+  \item CUSP library (for the SpMV example): \url{https://github.com/cusplibrary/cusplibrary}~\footnote{Tested with commit \texttt{93f6}}
 \end{itemize}
 
 The following system paths must be set. Here, \texttt{\$NITRO\_ROOT} refers
@@ -149,7 +149,7 @@ automatically selects the correct internal variant to execute.
 \subsubsection{Specifying Input Features}
 Input features can be specified in a way similar to variants: using either a functor, or
 using the \texttt{wrap\_feature} metafunction. They take in the exact same input as the
-variant will, and must return a string representing the value of the calculated
+variant will, and must return a real (double) value representing the value of the calculated
 feature for that input data. Here's an example:
 
 \begin{verbatim}
