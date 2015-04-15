@@ -10,6 +10,7 @@ spmv.constraints = True
 tuner = autotuner("spmv")
 
 # Set global tuning properties
+tuner.record_commands = True
 tuner.set_training_args(glob.glob("inputs/training/*.mtx"))
 
 # Tune

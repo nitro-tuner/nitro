@@ -42,9 +42,10 @@ def print_status(s, color=bcolors.ENDC):
 def print_warning(s):
   print(bcolors.WARNING + s + bcolors.ENDC)
 
-def print_error(s):
+def print_error(s, _quit = True):
   print(bcolors.FAIL + ' ' + "[ERROR: " + s + "]" + bcolors.ENDC)
-  quit()
+  if _quit:
+    quit()
 
 def print_ok(s = "OK"):
   print(bcolors.OKBLUE + ' [' + s + ']' + bcolors.ENDC)

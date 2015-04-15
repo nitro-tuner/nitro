@@ -32,6 +32,10 @@ class autotuner:
   m_testing_args = []
   m_record_benchmark_data = True
 
+  # User options
+  record_commands = False
+  log_errors = True
+
   def __init__(self, app_name):
     self.m_app_name = app_name
     print_header("Nitro Automatic Performance Tuning System")
@@ -107,7 +111,7 @@ class autotuner:
         command = "./" + self.m_app_name + "_tuned " + t
         print_status(command)
         # Run the app and let it record perf data
-        self.run(command)
+        self.run_command(command)
         print_ok()
 
       deindent()
@@ -184,19 +188,33 @@ class autotuner:
     indent()
     total = len(inputs) * len(code_paths)
     count = 0
+
+    if self.record_commands:
+      command_logs = dict()
+      for v in variant_list:
+        f = open(v.m_name + '_commands.log', 'w')
+        command_logs[v.m_name] = f
+
     for t in inputs:
       for path in code_paths:
         for v in path.keys():
           # Generate CodePath Config File
           config_generator.generate_cp_file(v.m_name + ".cp", path[v])
           command = "./" + self.m_app_name + "_codepath " + t
-          print_status("[" + str(path[v]) + "] " + command)
+          status = "[" + v.m_name + ":" + str(path[v]) + "] " + command
+          print_status(status)
           # Run the app and let it record perf data
-          self.run(command)
+          self.run_command(command)
+          if self.record_commands:
+            command_logs[v.m_name].write(status + '\n')
           perc = float(count) / float(total) * 100.0
           print_ok(str(int(perc)) + " %")
           count += 1
     deindent()
+
+    if self.record_commands:
+      for f in command_logs.keys():
+        command_logs[f].close()
 
   def train_model(self, variant_list, benchmark):
     print_status("Calculating Best Variants")
@@ -240,28 +258,30 @@ class autotuner:
     print_ok()
     deindent()
 
-  def run(self, exec_name):
-    try:
-      result = subprocess.check_output(exec_name, shell=True)
-    except subprocess.CalledProcessError as e:
-      print_error("Run Command Failed")
+  def run_command(self, cmd, error_msg = None):
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output = p.communicate()[0]
+    if p.returncode != 0:
+      if error_msg == None:
+        error_msg = "Failed to execute command: " + cmd.split()[0]
+      print_error(error_msg + ' (Please check nitro_errors.log)', False)
+      if self.log_errors:
+        # XXX: Open as append?
+        f = open('nitro_errors.log', 'w')
+        cmd_line = 'Command: ' + cmd
+        f.write(cmd_line + '\n')
+        f.write('-' * len(cmd_line) + '\n')
+        f.write(output + '\n')
+        f.close()
       quit()
 
   def cleanup(self):
-    try:
-      result = subprocess.check_output(self.m_clean_command, shell=True)
-    except subprocess.CalledProcessError as e:
-      print_error("Clean Command Failed")
-      quit()
+    self.run_command(self.m_clean_command, "Clean command failed")
 
   def build(self, exec_name):
     indent()
     print_status("Building " + self.m_app_name)
-    try:
-      result = subprocess.check_output(self.m_build_command, shell=True)
-    except subprocess.CalledProcessError as e:
-      print_error("Build Command Failed")
-      quit()
+    self.run_command(self.m_build_command, "Build Command Failed")
     print_ok()
     print_status("Moving to " + exec_name)
     shutil.move(self.m_app_name, exec_name)

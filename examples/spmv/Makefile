@@ -25,3 +25,4 @@ spmv: spmv.cu
 clean:
 	rm -f spmv *.o
 	rm -f *.cp *.perf *.tsperf *.ts *.t *.t.scale *.acc *_tuned *_codepath
+	rm -f *.log
