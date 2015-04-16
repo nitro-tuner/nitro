@@ -125,9 +125,11 @@ struct context {
           ((name + ".cp").c_str()));
       exit(-1);
     }
-    // XXX: Check for -1
     if(fscanf(fp_idx, "%lu", &info.m_idx) < 1)
       NITRO_FATAL("Error reading variant index from code path file.");
+
+    if(info.m_idx < 0)
+      NITRO_FATAL("Negative variant index specified")
 
     fclose(fp_idx);
 
