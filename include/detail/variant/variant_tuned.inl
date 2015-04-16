@@ -103,13 +103,20 @@ private:
 
     bool run = evaluate_constraints<Policy::enable_constraints,
                  constraint_evaluator_type>::impl
-                   (constraint_wrapper::get(m_constraints, selected_variant),
-                    m_unscaled_fv);
+                 (constraint_wrapper::get(m_constraints, selected_variant),
+                 m_unscaled_fv);
 
     if(run) {
       bench::report_stats(m_context, this, idx, m_unscaled_fv);
     } else {
       selected_variant = m_default_variant;
+      bool run_default = evaluate_constraints<Policy::enable_constraints,
+                           constraint_evaluator_type>::impl
+                           (constraint_wrapper::get(m_constraints, selected_variant),
+                           m_unscaled_fv);
+      if(!run_default)
+        NITRO_FATAL("Constraint violation on default variant")
+
       bench::report_stats(m_context, this, m_variant_indices, selected_variant, m_unscaled_fv);
     }
     return nitro::apply_from_tuple(*selected_variant, args);
