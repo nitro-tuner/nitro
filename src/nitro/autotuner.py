@@ -1,6 +1,6 @@
 #############################################################################
 #
-#   Copyright 2012-2015 University of Utah
+#   Copyright 2012-2016 University of Utah
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ class autotuner:
   def __init__(self, app_name):
     self.m_app_name = app_name
     print_header("Nitro Automatic Performance Tuning System")
-    print_header("Copyright (C) 2012-2015 University of Utah")
+    print_header("Copyright (C) 2012-2016 University of Utah")
 
   def set_training_args(self, args):
     self.m_training_args = args
